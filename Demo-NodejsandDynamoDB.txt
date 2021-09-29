@@ -1,0 +1,324 @@
+Node.js and DynamoDB Demo
+
+In this tutorial, you use the AWS SDK for JavaScript to write simple applications to perform the following Amazon DynamoDB operations:
+
+1) Create a table named Movies and load sample data in JSON format.
+
+2) Perform create, read, update, and delete operations on the table.
+
+3) Run simple queries.
+
+step 1: Launch AWS instance with internet access enabled and enable security group with allow all ports.
+
+Step 2: Set up an AWS access key to use the AWS SDKs.
+
+step 3: Set up the AWS SDK for JavaScript:
+
+		Install Node.js.
+				Connect to your Linux instance and switch to root
+				curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
+				. ~/.nvm/nvm.sh
+				nvm install node
+				Test that Node.js is installed and running correctly by typing the following at the command line.
+				node -e "console.log('Running Node.js ' + process.version)"		
+
+		Install the AWS SDK for JavaScript.
+				sudo amazon-linux-extras enable corretto8
+				sudo yum install java-1.8.0-amazon-corretto
+				Install the SDK and Dependencies
+				npm install aws-sdk
+				npm install uuid
+				
+step 4: Create a Table with in DynamoDB with AWS SDK for JavaScript
+				In this step, you create a table named Movies. The primary key for the table is composed of the following attributes:
+				year – The partition key. The AttributeType is N for number.
+				title – The sort key. The AttributeType is S for string.
+				Copy the following program and paste it into a file named MoviesCreateTable.js.
+				
+var AWS = require("aws-sdk");
+
+AWS.config.update({
+  region: "ap-southeast-2",
+  endpoint: "https://dynamodb.ap-southeast-2.amazonaws.com"
+});
+
+var dynamodb = new AWS.DynamoDB();
+
+var params = {
+    TableName : "Movies",
+    KeySchema: [       
+        { AttributeName: "year", KeyType: "HASH"},  //Partition key
+        { AttributeName: "title", KeyType: "RANGE" }  //Sort key
+    ],
+    AttributeDefinitions: [       
+        { AttributeName: "year", AttributeType: "N" },
+        { AttributeName: "title", AttributeType: "S" }
+    ],
+    ProvisionedThroughput: {       
+        ReadCapacityUnits: 10, 
+        WriteCapacityUnits: 10
+    }
+};
+
+dynamodb.createTable(params, function(err, data) {
+    if (err) {
+        console.error("Unable to create table. Error JSON:", JSON.stringify(err, null, 2));
+    } else {
+        console.log("Created table. Table description JSON:", JSON.stringify(data, null, 2));
+    }
+});
+				
+
+			To run the program, enter the following command.
+
+			node MoviesCreateTable.js
+			
+			
+step 5: Load Sample Data in DynamoDB with AWS SDK for JavaScript
+			Download the Sample Data File
+			curl --output moviedata.zip https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/samples/moviedata.zip
+			Extract the data file (moviedata.json) from the archive.
+			Load the Sample Data into the Movies Table
+			cerate file MoviesLoadData.js
+			touch MoviesLoadData.js
+			
+			Copy the following program and paste it into a file named MoviesLoadData.js.
+
+var AWS = require("aws-sdk");
+var fs = require('fs');
+
+AWS.config.update({
+  region: "ap-southeast-2",
+  endpoint: "https://dynamodb.ap-southeast-2.amazonaws.com"
+});
+
+var docClient = new AWS.DynamoDB.DocumentClient();
+
+console.log("Importing movies into DynamoDB. Please wait.");
+
+var allMovies = JSON.parse(fs.readFileSync('moviedata.json', 'utf8'));
+allMovies.forEach(function(movie) {
+    var params = {
+        TableName: "Movies",
+        Item: {
+            "year":  movie.year,
+            "title": movie.title,
+            "info":  movie.info
+        }
+    };
+
+    docClient.put(params, function(err, data) {
+       if (err) {
+           console.error("Unable to add movie", movie.title, ". Error JSON:", JSON.stringify(err, null, 2));
+       } else {
+           console.log("PutItem succeeded:", movie.title);
+       }
+    });
+});
+
+
+				To run the program, enter the following command.
+
+				node MoviesLoadData.js
+				
+step 6: Query and Scan Data with AWS SDK for JavaScript in DynamoDB
+			You can use the query method to retrieve data from a table. You must specify a partition key value; the sort key is optional.
+
+			The primary key for the Movies table is composed of the following:
+
+			year – The partition key. The attribute type is number. 
+
+			title – The sort key. The attribute type is string.
+			
+	Query - All Movies Released in a Year
+	The program included in this step retrieves all movies released in the year 1985.
+
+	Copy the following program and paste it into a file named MoviesQuery01.js.
+	
+	create a file MoviesQuery01.js
+	touch MoviesQuery01.js
+			
+			
+var AWS = require("aws-sdk");
+
+AWS.config.update({
+  region: "ap-southeast-2",
+  endpoint: "https://dynamodb.ap-southeast-2.amazonaws.com"
+});
+
+var docClient = new AWS.DynamoDB.DocumentClient();
+
+console.log("Querying for movies from 1985.");
+
+var params = {
+    TableName : "Movies",
+    KeyConditionExpression: "#yr = :yyyy",
+    ExpressionAttributeNames:{
+        "#yr": "year"
+    },
+    ExpressionAttributeValues: {
+        ":yyyy": 1985
+    }
+};
+
+docClient.query(params, function(err, data) {
+    if (err) {
+        console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
+    } else {
+        console.log("Query succeeded.");
+        data.Items.forEach(function(item) {
+            console.log(" -", item.year + ": " + item.title);
+        });
+    }
+});
+
+
+			To run the program, enter the following command.
+
+			node MoviesQuery01.js
+			
+Query - All Movies Released in a Year
+
+The program included in this step retrieves all movies released in the year 1985.
+
+create file name MoviesQuery01.js
+
+touch MoviesQuery01.js
+
+Copy the following program and paste it into a file named MoviesQuery01.js.
+
+
+var AWS = require("aws-sdk");
+
+AWS.config.update({
+  region: "ap-southeast-2",
+  endpoint: "https://dynamodb.ap-southeast-2.amazonaws.com"
+});
+
+var docClient = new AWS.DynamoDB.DocumentClient();
+
+console.log("Querying for movies from 1985.");
+
+var params = {
+    TableName : "Movies",
+    KeyConditionExpression: "#yr = :yyyy",
+    ExpressionAttributeNames:{
+        "#yr": "year"
+    },
+    ExpressionAttributeValues: {
+        ":yyyy": 1985
+    }
+};
+
+docClient.query(params, function(err, data) {
+    if (err) {
+        console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
+    } else {
+        console.log("Query succeeded.");
+        data.Items.forEach(function(item) {
+            console.log(" -", item.year + ": " + item.title);
+        });
+    }
+});
+
+
+To run the program, enter the following command.
+
+node MoviesQuery01.js
+
+
+Query - All Movies Released in a Year with Certain Titles
+
+
+The program included in this step retrieves all movies released in year 1992, with title beginning with the letter "A" through the letter "L".
+
+
+create a new file name MoviesQuery02.js
+
+touch MoviesQuery02.js
+
+Copy the following program and paste it into a file named MoviesQuery02.js.
+
+
+var AWS = require("aws-sdk");
+
+AWS.config.update({
+  region: "ap-southeast-2",
+  endpoint: "https://dynamodb.ap-southeast-2.amazonaws.com"
+});
+
+var docClient = new AWS.DynamoDB.DocumentClient();
+
+console.log("Querying for movies from 1992 - titles A-L, with genres and lead actor");
+
+var params = {
+    TableName : "Movies",
+    ProjectionExpression:"#yr, title, info.genres, info.actors[0]",
+    KeyConditionExpression: "#yr = :yyyy and title between :letter1 and :letter2",
+    ExpressionAttributeNames:{
+        "#yr": "year"
+    },
+    ExpressionAttributeValues: {
+        ":yyyy": 1992,
+        ":letter1": "A",
+        ":letter2": "L"
+    }
+};
+
+docClient.query(params, function(err, data) {
+    if (err) {
+        console.log("Unable to query. Error:", JSON.stringify(err, null, 2));
+    } else {
+        console.log("Query succeeded.");
+        data.Items.forEach(function(item) {
+            console.log(" -", item.year + ": " + item.title
+            + " ... " + item.info.genres
+            + " ... " + item.info.actors[0]);
+        });
+    }
+});
+
+
+
+To run the program, enter the following command.
+
+node MoviesQuery02.js
+
+
+Delete the Table using AWS SDK for JavaScript
+
+To delete the Movies table:
+
+create file MoviesDeleteTable.js 
+
+touch MoviesDeleteTable.js
+
+Copy the following program and paste it into a file named MoviesDeleteTable.js.
+
+var AWS = require("aws-sdk");
+
+AWS.config.update({
+  region: "ap-southeast-2",
+  endpoint: "https://dynamodb.ap-southeast-2.amazonaws.com"
+});
+
+var dynamodb = new AWS.DynamoDB();
+
+var params = {
+    TableName : "Movies"
+};
+
+dynamodb.deleteTable(params, function(err, data) {
+    if (err) {
+        console.error("Unable to delete table. Error JSON:", JSON.stringify(err, null, 2));
+    } else {
+        console.log("Deleted table. Table description JSON:", JSON.stringify(data, null, 2));
+    }
+});
+
+
+To run the program, enter the following command.
+
+node MoviesDeleteTable.js
+
+
