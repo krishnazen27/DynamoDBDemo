@@ -15,8 +15,8 @@
 var AWS = require("aws-sdk");
 
 AWS.config.update({
-  region: "ap-southeast-2",
-  endpoint: "https://dynamodb.ap-southeast-2.amazonaws.com"
+  region: "eu-west-2",
+  endpoint: "https://dynamodb.eu-west-2.amazonaws.com"
 });
 
 var docClient = new AWS.DynamoDB.DocumentClient();
